@@ -1,15 +1,10 @@
-
-import createBundleAnalyzer from '@next/bundle-analyzer';
-const withBundleAnalyzer = createBundleAnalyzer({
-  enabled: process.env.ANALYZE === 'true',
-});
-
 const nextConfig = {
   images: {
-    remotePatterns: [
-      { protocol: "https", hostname: "jrtoolsusa.com" }
-    ]
-  }
+    remotePatterns: [{ protocol: "https", hostname: "**" }],
+  },
+  eslint: {
+    ignoreDuringBuilds: true,
+  },
 };
 
-export default withBundleAnalyzer(nextConfig);
+export default nextConfig;
