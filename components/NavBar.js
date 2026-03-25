@@ -22,6 +22,9 @@ export default function NavBar() {
         <Link href="/store">{lang === 'es' ? 'Tienda' : 'Storefront'}</Link>
         <Link href="/intake">{lang === 'es' ? 'Agregar inventario' : 'Add Inventory'}</Link>
         <Link href="/inventory">{lang === 'es' ? 'Lista de inventario' : 'Inventory List'}</Link>
+        <Link href="/login">Login</Link>
+        <Link href="/signup">Sign Up</Link>
+        <Link href="/reset-password">Reset Password</Link>
         <div className="langToggle">
           <button
             className={`langBtn ${lang === 'en' ? 'active' : ''}`}
