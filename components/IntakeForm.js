@@ -193,7 +193,6 @@ export default function IntakeForm() {
             type="file"
             accept="image/*"
             multiple
-            capture="environment"
             onChange={onFilesChange}
           />
           <div className="note">{t(lang, 'photoHint')}</div>
