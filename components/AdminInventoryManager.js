@@ -13,7 +13,8 @@ const emptyEditor = {
   stock: '',
   description: '',
   active: true,
-  images: [],
+  existingImages: [],
+  newImages: [],
 };
 
 export default function AdminInventoryManager() {
@@ -68,7 +69,8 @@ export default function AdminInventoryManager() {
       stock: String(product.rawStock ?? product.quantity ?? 0),
       description: product.description || '',
       active: product.active !== false,
-      images: product.images || [],
+      existingImages: product.images || [],
+      newImages: [],
     });
     setMessage('');
     setError('');
@@ -92,9 +94,7 @@ export default function AdminInventoryManager() {
       formData.append('stock', editor.stock);
       formData.append('description', editor.description);
       formData.append('active', String(editor.active));
-      editor.images
-        .filter((image) => image instanceof File)
-        .forEach((image) => formData.append('images', image));
+      (editor.newImages || []).forEach((image) => formData.append('images', image));
 
       const res = await fetch(`/api/admin/products/${editor.id}`, {
         method: 'PUT',
@@ -193,24 +193,24 @@ export default function AdminInventoryManager() {
               onChange={(e) =>
                 setEditor((prev) => ({
                   ...prev,
-                  images: [...(prev.images || []), ...Array.from(e.target.files || [])],
+                  newImages: [...(prev.newImages || []), ...Array.from(e.target.files || [])],
                 }))
               }
             />
-            {(editor.images || []).length ? (
+            {(editor.existingImages || []).length || (editor.newImages || []).length ? (
               <div className="previewGrid" style={{ marginTop: 12 }}>
-                {editor.images.map((image, index) => {
-                  const isFile = image instanceof File;
-                  const src = isFile ? URL.createObjectURL(image) : image;
-                  const label = isFile ? image.name : `${existingImageText(lang)} ${index + 1}`;
-
-                  return (
-                    <div className="previewCard" key={`${label}-${index}`}>
-                      <img src={src} alt={label} />
-                      <div className="cap">{label}</div>
-                    </div>
-                  );
-                })}
+                {(editor.existingImages || []).map((image, index) => (
+                  <div className="previewCard" key={`existing-${index}`}>
+                    <img src={image} alt={`${existingImageText(lang)} ${index + 1}`} />
+                    <div className="cap">{`${existingImageText(lang)} ${index + 1}`}</div>
+                  </div>
+                ))}
+                {(editor.newImages || []).map((image, index) => (
+                  <div className="previewCard" key={`new-${image.name}-${index}`}>
+                    <img src={URL.createObjectURL(image)} alt={image.name} />
+                    <div className="cap">{image.name}</div>
+                  </div>
+                ))}
               </div>
             ) : null}
           </div>
