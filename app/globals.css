@@ -208,6 +208,40 @@ button,
   justify-content: space-between;
   margin-bottom: 14px;
 }
+.filterPills,
+.imageToolbar,
+.previewActions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.filterPill,
+.previewActionBtn {
+  padding: 9px 12px;
+  font-size: 13px;
+}
+.filterPill.isActive,
+.previewActionBtn.isActive {
+  background: linear-gradient(135deg, var(--primary), var(--primary-2));
+  color: #1a1200;
+  border-color: transparent;
+}
+.inventoryThumb {
+  width: 72px;
+  height: 72px;
+  object-fit: cover;
+  border-radius: 14px;
+  border: 1px solid var(--line);
+  background: var(--panel-2);
+}
+.inventoryThumbPlaceholder {
+  display: grid;
+  place-items: center;
+  font-size: 11px;
+  color: var(--muted);
+  text-align: center;
+  padding: 8px;
+}
 .sectionTitle {
   font-size: 22px;
   margin: 0 0 10px;

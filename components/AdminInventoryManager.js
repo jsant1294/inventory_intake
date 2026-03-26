@@ -15,12 +15,14 @@ const emptyEditor = {
   active: true,
   existingImages: [],
   newImages: [],
+  primarySource: '',
 };
 
 export default function AdminInventoryManager() {
   const { lang } = useLang();
   const [products, setProducts] = useState([]);
   const [editor, setEditor] = useState(emptyEditor);
+  const [filterMode, setFilterMode] = useState('all');
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
@@ -71,6 +73,7 @@ export default function AdminInventoryManager() {
       active: product.active !== false,
       existingImages: product.images || [],
       newImages: [],
+      primarySource: product.primaryImage ? `existing:${product.primaryImage}` : '',
     });
     setMessage('');
     setError('');
@@ -94,6 +97,12 @@ export default function AdminInventoryManager() {
       formData.append('stock', editor.stock);
       formData.append('description', editor.description);
       formData.append('active', String(editor.active));
+      formData.append('existing_images', JSON.stringify(editor.existingImages || []));
+      formData.append('primary_source', editor.primarySource || '');
+      formData.append(
+        'image_mode',
+        editor.existingImages.length === 0 && editor.newImages.length > 0 ? 'replace' : 'append',
+      );
       (editor.newImages || []).forEach((image) => formData.append('images', image));
 
       const res = await fetch(`/api/admin/products/${editor.id}`, {
@@ -151,6 +160,16 @@ export default function AdminInventoryManager() {
     );
   }
 
+  const filteredProducts = products.filter((product) => {
+    if (filterMode === 'missing-images') {
+      return !(product.images || []).length;
+    }
+    if (filterMode === 'with-images') {
+      return Boolean((product.images || []).length);
+    }
+    return true;
+  });
+
   return (
     <div className="stack">
       {editor.id && (
@@ -197,18 +216,97 @@ export default function AdminInventoryManager() {
                 }))
               }
             />
+            <div className="imageToolbar">
+              <button
+                className="btn-secondary"
+                type="button"
+                onClick={() =>
+                  setEditor((prev) => ({
+                    ...prev,
+                    existingImages: [],
+                    primarySource: '',
+                  }))
+                }
+              >
+                {clearExistingImagesText(lang)}
+              </button>
+            </div>
             {(editor.existingImages || []).length || (editor.newImages || []).length ? (
               <div className="previewGrid" style={{ marginTop: 12 }}>
                 {(editor.existingImages || []).map((image, index) => (
                   <div className="previewCard" key={`existing-${index}`}>
                     <img src={image} alt={`${existingImageText(lang)} ${index + 1}`} />
                     <div className="cap">{`${existingImageText(lang)} ${index + 1}`}</div>
+                    <div className="previewActions">
+                      <button
+                        className={`btn-secondary previewActionBtn ${editor.primarySource === `existing:${image}` ? 'isActive' : ''}`}
+                        type="button"
+                        onClick={() =>
+                          setEditor((prev) => ({
+                            ...prev,
+                            primarySource: `existing:${image}`,
+                          }))
+                        }
+                      >
+                        {primaryImageText(lang)}
+                      </button>
+                      <button
+                        className="btn-secondary previewActionBtn"
+                        type="button"
+                        onClick={() =>
+                          setEditor((prev) => {
+                            const nextExisting = prev.existingImages.filter((item) => item !== image);
+                            const nextPrimary =
+                              prev.primarySource === `existing:${image}` ? '' : prev.primarySource;
+                            return {
+                              ...prev,
+                              existingImages: nextExisting,
+                              primarySource: nextPrimary,
+                            };
+                          })
+                        }
+                      >
+                        {removeImageText(lang)}
+                      </button>
+                    </div>
                   </div>
                 ))}
                 {(editor.newImages || []).map((image, index) => (
                   <div className="previewCard" key={`new-${image.name}-${index}`}>
                     <img src={URL.createObjectURL(image)} alt={image.name} />
                     <div className="cap">{image.name}</div>
+                    <div className="previewActions">
+                      <button
+                        className={`btn-secondary previewActionBtn ${editor.primarySource === `new:${index}` ? 'isActive' : ''}`}
+                        type="button"
+                        onClick={() =>
+                          setEditor((prev) => ({
+                            ...prev,
+                            primarySource: `new:${index}`,
+                          }))
+                        }
+                      >
+                        {primaryImageText(lang)}
+                      </button>
+                      <button
+                        className="btn-secondary previewActionBtn"
+                        type="button"
+                        onClick={() =>
+                          setEditor((prev) => {
+                            const nextNew = prev.newImages.filter((_, imageIndex) => imageIndex !== index);
+                            const nextPrimary =
+                              prev.primarySource === `new:${index}` ? '' : prev.primarySource;
+                            return {
+                              ...prev,
+                              newImages: nextNew,
+                              primarySource: nextPrimary,
+                            };
+                          })
+                        }
+                      >
+                        {removeImageText(lang)}
+                      </button>
+                    </div>
                   </div>
                 ))}
               </div>
@@ -230,16 +328,45 @@ export default function AdminInventoryManager() {
       )}
 
       <section className="card">
-        <h2 className="sectionTitle">{inventoryManagerText(lang)}</h2>
+        <div className="adminSectionHeader">
+          <div>
+            <h2 className="sectionTitle">{inventoryManagerText(lang)}</h2>
+            <p className="sub">{inventoryManagerSubText(lang)}</p>
+          </div>
+          <div className="filterPills">
+            <button
+              className={`btn-secondary filterPill ${filterMode === 'all' ? 'isActive' : ''}`}
+              type="button"
+              onClick={() => setFilterMode('all')}
+            >
+              {allProductsText(lang)}
+            </button>
+            <button
+              className={`btn-secondary filterPill ${filterMode === 'missing-images' ? 'isActive' : ''}`}
+              type="button"
+              onClick={() => setFilterMode('missing-images')}
+            >
+              {missingImagesText(lang)}
+            </button>
+            <button
+              className={`btn-secondary filterPill ${filterMode === 'with-images' ? 'isActive' : ''}`}
+              type="button"
+              onClick={() => setFilterMode('with-images')}
+            >
+              {withImagesText(lang)}
+            </button>
+          </div>
+        </div>
         {error ? <div className="status error">{error}</div> : null}
         {message ? <div className="status ok">{message}</div> : null}
 
-        {products.length === 0 ? (
+        {filteredProducts.length === 0 ? (
           <div className="emptyBox">{emptyInventoryText(lang)}</div>
         ) : (
           <table className="tableMock">
             <thead>
               <tr>
+                <th>{thumbnailText(lang)}</th>
                 <th>{productText(lang)}</th>
                 <th>{brandText(lang)}</th>
                 <th>{modelText(lang)}</th>
@@ -250,8 +377,15 @@ export default function AdminInventoryManager() {
               </tr>
             </thead>
             <tbody>
-              {products.map((product) => (
+              {filteredProducts.map((product) => (
                 <tr key={product.id}>
+                  <td>
+                    {product.primaryImage ? (
+                      <img className="inventoryThumb" src={product.primaryImage} alt={product.name} />
+                    ) : (
+                      <div className="inventoryThumb inventoryThumbPlaceholder">{noImageText(lang)}</div>
+                    )}
+                  </td>
                   <td>{product.name}</td>
                   <td>{product.brand}</td>
                   <td>{product.model || '-'}</td>
@@ -320,8 +454,34 @@ function inventoryManagerText(lang) {
   return lang === 'es' ? 'Administrador de inventario' : 'Inventory manager';
 }
 
+function inventoryManagerSubText(lang) {
+  return lang === 'es'
+    ? 'Filtra productos sin imagen, revisa miniaturas y corrige la foto principal sin recrear el articulo.'
+    : 'Filter products missing images, review thumbnails, and correct the primary photo without recreating the item.';
+}
+
 function emptyInventoryText(lang) {
   return lang === 'es' ? 'Todavia no hay productos.' : 'No products yet.';
+}
+
+function allProductsText(lang) {
+  return lang === 'es' ? 'Todos' : 'All';
+}
+
+function missingImagesText(lang) {
+  return lang === 'es' ? 'Sin imagen' : 'Missing images';
+}
+
+function withImagesText(lang) {
+  return lang === 'es' ? 'Con imagen' : 'With images';
+}
+
+function thumbnailText(lang) {
+  return lang === 'es' ? 'Foto' : 'Photo';
+}
+
+function noImageText(lang) {
+  return lang === 'es' ? 'Sin foto' : 'No photo';
 }
 
 function productText(lang) {
@@ -354,6 +514,18 @@ function imagesText(lang) {
 
 function existingImageText(lang) {
   return lang === 'es' ? 'Imagen actual' : 'Current image';
+}
+
+function clearExistingImagesText(lang) {
+  return lang === 'es' ? 'Quitar imagenes actuales' : 'Clear current images';
+}
+
+function primaryImageText(lang) {
+  return lang === 'es' ? 'Foto principal' : 'Set primary';
+}
+
+function removeImageText(lang) {
+  return lang === 'es' ? 'Quitar' : 'Remove';
 }
 
 function visibilityText(lang) {

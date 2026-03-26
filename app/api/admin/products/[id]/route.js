@@ -9,6 +9,15 @@ function normalizeNumber(value, fallback = 0) {
   return Number.isFinite(numeric) ? numeric : fallback;
 }
 
+function parseJsonArray(value) {
+  try {
+    const parsed = JSON.parse(value || '[]');
+    return Array.isArray(parsed) ? parsed.filter(Boolean) : [];
+  } catch (_error) {
+    return [];
+  }
+}
+
 async function uploadImages(supabase, bucketName, slug, files) {
   const imageUrls = [];
   const publicBaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
@@ -64,12 +73,27 @@ export async function PUT(request, { params }) {
       files,
     );
 
-    const existingImages = Array.isArray(existingProduct.images)
-      ? existingProduct.images.filter(Boolean)
-      : existingProduct.image_url
-        ? [existingProduct.image_url]
-        : [];
-    const mergedImages = [...uploadedImageUrls, ...existingImages].filter(Boolean);
+    const existingImages = parseJsonArray(formData.get('existing_images')?.toString());
+    const primarySource = formData.get('primary_source')?.toString() || '';
+    const imageMode = formData.get('image_mode')?.toString() || 'append';
+
+    let mergedImages =
+      imageMode === 'replace'
+        ? [...uploadedImageUrls]
+        : [...existingImages, ...uploadedImageUrls].filter(Boolean);
+
+    if (primarySource.startsWith('existing:')) {
+      const selected = primarySource.replace('existing:', '');
+      mergedImages = [selected, ...mergedImages.filter((image) => image !== selected)];
+    }
+
+    if (primarySource.startsWith('new:')) {
+      const selectedIndex = Number(primarySource.replace('new:', ''));
+      const selected = uploadedImageUrls[selectedIndex];
+      if (selected) {
+        mergedImages = [selected, ...mergedImages.filter((image) => image !== selected)];
+      }
+    }
 
     const payload = {
       name: formData.get('name')?.toString().trim() || 'Tool',
