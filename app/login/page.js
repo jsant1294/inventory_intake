@@ -19,11 +19,32 @@ export default function LoginPage() {
     }
     setLoading(true);
     setError(null);
-    const { error } = await supabase.auth.signInWithPassword({ email, password });
-    if (error) {
-      setError(error.message);
-    } else {
-      router.replace("/");
+    try {
+      const res = await fetch('/api/auth/login', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ email, password }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Login failed.');
+
+      const { error: sessionError } = await supabase.auth.setSession({
+        access_token: data.session.access_token,
+        refresh_token: data.session.refresh_token,
+      });
+
+      if (sessionError) throw sessionError;
+
+      if (data.user?.user_metadata?.role === 'admin') {
+        router.replace('/admin');
+        return;
+      }
+
+      router.replace('/');
+    } catch (loginError) {
+      setError(loginError.message || 'Login failed.');
     }
     setLoading(false);
   }
