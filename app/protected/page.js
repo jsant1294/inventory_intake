@@ -2,7 +2,7 @@
 import React from "react";
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { supabase } from "../../lib/supabase";
+import { supabase, supabaseConfigError } from "../../lib/supabase";
 
 export default function ProtectedPage() {
   const [user, setUser] = useState(null);
@@ -10,6 +10,11 @@ export default function ProtectedPage() {
   const router = useRouter();
 
   useEffect(() => {
+    if (!supabase) {
+      setLoading(false);
+      return;
+    }
+
     const getUser = async () => {
       const { data, error } = await supabase.auth.getUser();
       if (error || !data.user) {
@@ -23,6 +28,7 @@ export default function ProtectedPage() {
   }, [router]);
 
   if (loading) return <div>Loading...</div>;
+  if (!supabase) return <div>{supabaseConfigError}</div>;
   if (!user) return null;
 
   return (

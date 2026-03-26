@@ -1,7 +1,7 @@
 'use client';
 
 import React from 'react';
-import { supabase } from '../lib/supabase';
+import { supabase, supabaseConfigError } from '../lib/supabase';
 import { useEffect, useState } from 'react';
 
 export default function SupabaseTest() {
@@ -9,6 +9,11 @@ export default function SupabaseTest() {
   const [row, setRow] = useState(null);
 
   useEffect(() => {
+    if (!supabase) {
+      setStatus('Supabase is not configured: ' + supabaseConfigError);
+      return;
+    }
+
     supabase
       .from('products')
       .select('*')

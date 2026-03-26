@@ -2,7 +2,7 @@
 
 import React from 'react';
 import { useEffect, useState } from 'react';
-import { supabase } from '../lib/supabase';
+import { supabase, supabaseConfigError } from '../lib/supabase';
 
 export default function InventoryLive() {
   const [products, setProducts] = useState([]);
@@ -10,6 +10,12 @@ export default function InventoryLive() {
   const [error, setError] = useState(null);
 
   useEffect(() => {
+    if (!supabase) {
+      setError(supabaseConfigError);
+      setLoading(false);
+      return;
+    }
+
     supabase
       .from('products')
       .select('id, name, model, condition, target_price, status')

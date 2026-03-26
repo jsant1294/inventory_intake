@@ -2,7 +2,7 @@
 import React from "react";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { supabase } from "../../lib/supabase";
+import { supabase, supabaseConfigError } from "../../lib/supabase";
 
 export default function SignupPage() {
   const [email, setEmail] = useState("");
@@ -14,6 +14,10 @@ export default function SignupPage() {
 
   async function handleSignup(e) {
     e.preventDefault();
+    if (!supabase) {
+      setError(supabaseConfigError);
+      return;
+    }
     setLoading(true);
     setError(null);
     setSuccess(false);

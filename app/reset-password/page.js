@@ -2,7 +2,7 @@
 import React from "react";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { supabase } from "../../lib/supabase";
+import { supabase, supabaseConfigError } from "../../lib/supabase";
 
 export default function ResetPasswordPage() {
   const [email, setEmail] = useState("");
@@ -13,6 +13,10 @@ export default function ResetPasswordPage() {
 
   async function handleReset(e) {
     e.preventDefault();
+    if (!supabase) {
+      setError(supabaseConfigError);
+      return;
+    }
     setLoading(true);
     setError(null);
     setSuccess(false);
