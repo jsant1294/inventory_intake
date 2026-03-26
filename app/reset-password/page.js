@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { supabase, supabaseConfigError } from "../../lib/supabase";
 
 export default function ResetPasswordPage() {
-  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "https://jrtoolsusa.com";
+  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "https://admin.jrtoolsusa.com";
   const [email, setEmail] = useState("");
   const [error, setError] = useState(null);
   const [loading, setLoading] = useState(false);
