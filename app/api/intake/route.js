@@ -38,11 +38,11 @@ async function buildUniqueSlug(supabase, productName, modelNumber) {
 
   if (error) throw error;
 
-  const existing = new Set((data || []).map((row) => row.slug).filter(Boolean));
-  if (!existing.has(baseSlug)) return baseSlug;
+  const existing = (data || []).map((row) => row.slug).filter(Boolean);
+  if (!existing.includes(baseSlug)) return baseSlug;
 
   let index = 2;
-  while (existing.has(`${baseSlug}-${index}`)) {
+  while (existing.includes(`${baseSlug}-${index}`)) {
     index += 1;
   }
 
