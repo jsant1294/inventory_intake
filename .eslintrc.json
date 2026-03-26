@@ -1,18 +1,31 @@
 {
-  "extends": ["airbnb", "airbnb-typescript", "prettier"],
-  "plugins": ["prettier", "@typescript-eslint"],
-  "parser": "@typescript-eslint/parser",
+  "extends": ["eslint:recommended", "plugin:react/recommended", "prettier"],
+  "plugins": ["react"],
   "parserOptions": {
-    "project": "./tsconfig.json"
+    "ecmaVersion": 2022,
+    "sourceType": "module",
+    "ecmaFeatures": {
+      "jsx": true
+    }
   },
   "rules": {
-    "prettier/prettier": "error"
+    "react/react-in-jsx-scope": "off",
+    "react/jsx-filename-extension": "off",
+    "react/prop-types": "off"
   },
   "env": {
     "browser": true,
-    "node": true
+    "node": true,
+    "jest": true
+  },
+  "settings": {
+    "react": {
+      "version": "detect"
+    }
   },
   "ignorePatterns": [
+    ".next/",
+    "node_modules/",
     "sentry.client.config.js",
     "sentry.server.config.js",
     "lib/"

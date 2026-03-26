@@ -3,7 +3,6 @@ import React from 'react';
 import Link from 'next/link';
 import { BRAND } from '../config/brand';
 import { useLang } from './LangProvider';
-import { t } from '../lib/translations';
 
 export default function NavBar() {
   const { lang, setLang } = useLang();
