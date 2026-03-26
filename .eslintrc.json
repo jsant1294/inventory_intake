@@ -14,6 +14,7 @@
   },
   "ignorePatterns": [
     "sentry.client.config.js",
-    "sentry.server.config.js"
+    "sentry.server.config.js",
+    "lib/"
   ]
 }
