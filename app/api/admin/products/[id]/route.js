@@ -9,21 +9,78 @@ function normalizeNumber(value, fallback = 0) {
   return Number.isFinite(numeric) ? numeric : fallback;
 }
 
+async function uploadImages(supabase, bucketName, slug, files) {
+  const imageUrls = [];
+
+  for (let i = 0; i < files.length; i += 1) {
+    const file = files[i];
+
+    if (!file || typeof file.arrayBuffer !== 'function' || Number(file.size || 0) === 0) continue;
+
+    const ext = file.name.includes('.') ? file.name.split('.').pop() : 'jpg';
+    const path = `brands/jr-tools-usa/${slug}/${Date.now()}-${i}.${ext}`;
+
+    const { error: uploadError } = await supabase.storage
+      .from(bucketName)
+      .upload(path, await file.arrayBuffer(), {
+        contentType: file.type || 'application/octet-stream',
+        upsert: true,
+      });
+
+    if (uploadError) throw uploadError;
+
+    const { data: publicUrlData } = supabase.storage.from(bucketName).getPublicUrl(path);
+    imageUrls.push(publicUrlData.publicUrl);
+  }
+
+  return imageUrls;
+}
+
 export async function PUT(request, { params }) {
   const authResult = await requireAdminUser(request);
   if (authResult.error) return authResult.error;
 
   try {
-    const body = await request.json();
     const supabase = getServerSupabase();
+    const bucketName = process.env.NEXT_PUBLIC_SUPABASE_STORAGE_BUCKET || 'product-images';
+    const formData = await request.formData();
+
+    const { data: existingProduct, error: existingError } = await supabase
+      .from('products')
+      .select('*')
+      .eq('id', params.id)
+      .maybeSingle();
+
+    if (existingError) throw existingError;
+    if (!existingProduct) {
+      return Response.json({ error: 'Product not found.' }, { status: 404 });
+    }
+
+    const files = formData.getAll('images').filter(Boolean);
+    const uploadedImageUrls = await uploadImages(
+      supabase,
+      bucketName,
+      existingProduct.slug || existingProduct.id,
+      files,
+    );
+
+    const existingImages = Array.isArray(existingProduct.images)
+      ? existingProduct.images.filter(Boolean)
+      : existingProduct.image_url
+        ? [existingProduct.image_url]
+        : [];
+    const mergedImages = [...uploadedImageUrls, ...existingImages].filter(Boolean);
+
     const payload = {
-      name: body.name?.toString().trim() || 'Tool',
-      brand: body.brand?.toString().trim() || 'Tool',
-      model: body.model?.toString().trim() || '',
-      description: body.description?.toString().trim() || '',
-      price: normalizeNumber(body.price, 0),
-      stock: normalizeNumber(body.stock, 0),
-      active: body.active !== false,
+      name: formData.get('name')?.toString().trim() || 'Tool',
+      brand: formData.get('brand')?.toString().trim() || 'Tool',
+      model: formData.get('model')?.toString().trim() || '',
+      description: formData.get('description')?.toString().trim() || '',
+      price: normalizeNumber(formData.get('price'), 0),
+      stock: normalizeNumber(formData.get('stock'), 0),
+      active: formData.get('active') !== 'false',
+      images: mergedImages,
+      image_url: mergedImages[0] || null,
       updated_at: new Date().toISOString(),
     };
 
@@ -35,9 +92,6 @@ export async function PUT(request, { params }) {
       .maybeSingle();
 
     if (error) throw error;
-    if (!data) {
-      return Response.json({ error: 'Product not found.' }, { status: 404 });
-    }
 
     return Response.json({
       product: {

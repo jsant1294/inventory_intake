@@ -13,6 +13,7 @@ const emptyEditor = {
   stock: '',
   description: '',
   active: true,
+  images: [],
 };
 
 export default function AdminInventoryManager() {
@@ -67,6 +68,7 @@ export default function AdminInventoryManager() {
       stock: String(product.rawStock ?? product.quantity ?? 0),
       description: product.description || '',
       active: product.active !== false,
+      images: product.images || [],
     });
     setMessage('');
     setError('');
@@ -82,21 +84,24 @@ export default function AdminInventoryManager() {
     setMessage('');
     try {
       const token = await getAccessToken();
+      const formData = new FormData();
+      formData.append('name', editor.name);
+      formData.append('brand', editor.brand);
+      formData.append('model', editor.model);
+      formData.append('price', editor.price);
+      formData.append('stock', editor.stock);
+      formData.append('description', editor.description);
+      formData.append('active', String(editor.active));
+      editor.images
+        .filter((image) => image instanceof File)
+        .forEach((image) => formData.append('images', image));
+
       const res = await fetch(`/api/admin/products/${editor.id}`, {
         method: 'PUT',
         headers: {
           Authorization: `Bearer ${token}`,
-          'Content-Type': 'application/json',
         },
-        body: JSON.stringify({
-          name: editor.name,
-          brand: editor.brand,
-          model: editor.model,
-          price: editor.price,
-          stock: editor.stock,
-          description: editor.description,
-          active: editor.active,
-        }),
+        body: formData,
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || saveErrorText(lang));
@@ -178,6 +183,36 @@ export default function AdminInventoryManager() {
           <div className="field">
             <label>{descriptionText(lang)}</label>
             <textarea value={editor.description} onChange={(e) => setEditor((prev) => ({ ...prev, description: e.target.value }))} />
+          </div>
+          <div className="field">
+            <label>{imagesText(lang)}</label>
+            <input
+              type="file"
+              accept="image/*"
+              multiple
+              onChange={(e) =>
+                setEditor((prev) => ({
+                  ...prev,
+                  images: [...(prev.images || []), ...Array.from(e.target.files || [])],
+                }))
+              }
+            />
+            {(editor.images || []).length ? (
+              <div className="previewGrid" style={{ marginTop: 12 }}>
+                {editor.images.map((image, index) => {
+                  const isFile = image instanceof File;
+                  const src = isFile ? URL.createObjectURL(image) : image;
+                  const label = isFile ? image.name : `${existingImageText(lang)} ${index + 1}`;
+
+                  return (
+                    <div className="previewCard" key={`${label}-${index}`}>
+                      <img src={src} alt={label} />
+                      <div className="cap">{label}</div>
+                    </div>
+                  );
+                })}
+              </div>
+            ) : null}
           </div>
           <label className="checkitem" style={{ marginTop: 12 }}>
             <input type="checkbox" checked={editor.active} onChange={(e) => setEditor((prev) => ({ ...prev, active: e.target.checked }))} />
@@ -311,6 +346,14 @@ function qtyText(lang) {
 
 function descriptionText(lang) {
   return lang === 'es' ? 'Descripcion' : 'Description';
+}
+
+function imagesText(lang) {
+  return lang === 'es' ? 'Imagenes' : 'Images';
+}
+
+function existingImageText(lang) {
+  return lang === 'es' ? 'Imagen actual' : 'Current image';
 }
 
 function visibilityText(lang) {
