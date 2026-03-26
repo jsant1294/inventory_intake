@@ -110,6 +110,11 @@ img {
 .hero {
   background: linear-gradient(135deg, rgba(244, 180, 0, 0.14), rgba(255, 210, 77, 0.04));
 }
+.adminHero {
+  background:
+    radial-gradient(circle at top right, rgba(244, 180, 0, 0.2), transparent 34%),
+    linear-gradient(135deg, rgba(244, 180, 0, 0.08), rgba(255, 255, 255, 0.02));
+}
 .kicker {
   display: inline-flex;
   align-items: center;
@@ -184,6 +189,24 @@ button,
   border-radius: 20px;
   border: 1px solid rgba(255, 255, 255, 0.06);
   background: rgba(255, 255, 255, 0.03);
+}
+.adminCallout {
+  min-height: 100%;
+}
+.adminShortcutGrid {
+  display: grid;
+  gap: 12px;
+  grid-template-columns: 1fr;
+}
+.adminShortcutCard {
+  min-height: 132px;
+}
+.adminSectionHeader {
+  display: flex;
+  gap: 12px;
+  align-items: flex-start;
+  justify-content: space-between;
+  margin-bottom: 14px;
 }
 .sectionTitle {
   font-size: 22px;
@@ -362,6 +385,9 @@ button,
   }
   .grid2 {
     grid-template-columns: 1fr 1fr;
+  }
+  .adminShortcutGrid {
+    grid-template-columns: repeat(3, 1fr);
   }
   .cardsGrid {
     grid-template-columns: repeat(3, 1fr);

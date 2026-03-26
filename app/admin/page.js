@@ -8,9 +8,7 @@ import { useRouter } from "next/navigation";
 import { supabase, supabaseConfigError } from "../../lib/supabase";
 
 export default function AdminPage() {
-  const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [isAdmin, setIsAdmin] = useState(false);
   const router = useRouter();
 
   useEffect(() => {
@@ -26,11 +24,10 @@ export default function AdminPage() {
         setLoading(false);
         return;
       }
-      setUser(data.user);
-      // Fetch user role from Supabase (assumes 'role' in user_metadata)
+
       const role = data.user.user_metadata?.role;
       if (role === "admin") {
-        setIsAdmin(true);
+        router.replace("/intake");
       } else {
         router.replace("/"); // redirect non-admins
       }
@@ -41,20 +38,5 @@ export default function AdminPage() {
 
   if (loading) return <div>Loading...</div>;
   if (!supabase) return <div>{supabaseConfigError}</div>;
-  if (!user || !isAdmin) return null;
-
-  return (
-    <div style={{ padding: 32 }}>
-      <h1>Admin Only Page</h1>
-      <p>Welcome, {user.email} (admin)!</p>
-      <button
-        onClick={async () => {
-          await supabase.auth.signOut();
-          router.replace("/login");
-        }}
-      >
-        Sign Out
-      </button>
-    </div>
-  );
+  return null;
 }

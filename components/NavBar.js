@@ -41,18 +41,19 @@ export default function NavBar() {
       <div className="brandRow">
         <div className="logoBadge">{BRAND.logoText}</div>
         <div>
-          <div style={{ fontWeight: 800 }}>{BRAND.name}</div>
-          <div style={{ color: 'var(--muted)', fontSize: 12 }}>{BRAND.domain}</div>
+          <div style={{ fontWeight: 800 }}>{`${BRAND.name} Admin`}</div>
+          <div style={{ color: 'var(--muted)', fontSize: 12 }}>
+            {lang === 'es' ? 'Portal de operaciones internas' : 'Internal operations portal'}
+          </div>
         </div>
       </div>
       <div className="navLinks">
-        <Link href="/">{lang === 'es' ? 'Inicio' : 'Home'}</Link>
-        <Link href="/store">{lang === 'es' ? 'Tienda' : 'Storefront'}</Link>
+        <Link href="/">{lang === 'es' ? 'Panel' : 'Dashboard'}</Link>
         {isAdmin ? (
           <>
-            <Link href="/admin">{lang === 'es' ? 'Admin' : 'Admin'}</Link>
-            <Link href="/intake">{lang === 'es' ? 'Agregar inventario' : 'Add Inventory'}</Link>
-            <Link href="/inventory">{lang === 'es' ? 'Lista de inventario' : 'Inventory List'}</Link>
+            <Link href="/intake">{lang === 'es' ? 'Intake' : 'Intake'}</Link>
+            <Link href="/inventory">{lang === 'es' ? 'Inventario' : 'Inventory'}</Link>
+            <Link href="/store">{lang === 'es' ? 'Tienda publica' : 'Public store'}</Link>
           </>
         ) : null}
         {user ? (
@@ -61,9 +62,9 @@ export default function NavBar() {
           </button>
         ) : (
           <>
-            <Link href="/login">Login</Link>
-            <Link href="/signup">Sign Up</Link>
-            <Link href="/reset-password">Reset Password</Link>
+            <Link href="/login">{lang === 'es' ? 'Entrar' : 'Login'}</Link>
+            <Link href="/signup">{lang === 'es' ? 'Crear acceso' : 'Sign Up'}</Link>
+            <Link href="/reset-password">{lang === 'es' ? 'Recuperar acceso' : 'Reset Password'}</Link>
           </>
         )}
         <div className="langToggle">

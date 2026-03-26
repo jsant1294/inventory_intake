@@ -38,7 +38,7 @@ export default function LoginPage() {
       if (sessionError) throw sessionError;
 
       if (data.user?.user_metadata?.role === 'admin') {
-        router.replace('/admin');
+        router.replace('/intake');
         return;
       }
 
