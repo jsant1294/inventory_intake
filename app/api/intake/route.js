@@ -51,6 +51,7 @@ async function buildUniqueSlug(supabase, productName, modelNumber) {
 
 async function uploadImages(supabase, bucketName, slug, files) {
   const imageUrls = [];
+  const publicBaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
 
   for (let i = 0; i < files.length; i += 1) {
     const file = files[i];
@@ -69,8 +70,7 @@ async function uploadImages(supabase, bucketName, slug, files) {
 
     if (uploadError) throw uploadError;
 
-    const { data: publicUrlData } = supabase.storage.from(bucketName).getPublicUrl(path);
-    imageUrls.push(publicUrlData.publicUrl);
+    imageUrls.push(`${publicBaseUrl}/storage/v1/object/public/${bucketName}/${path}`);
   }
 
   return imageUrls;
