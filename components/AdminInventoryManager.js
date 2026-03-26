@@ -83,6 +83,33 @@ export default function AdminInventoryManager() {
     setEditor(emptyEditor);
   }
 
+  function moveExistingImage(index, direction) {
+    setEditor((prev) => {
+      const nextIndex = index + direction;
+      if (nextIndex < 0 || nextIndex >= prev.existingImages.length) return prev;
+      const nextExisting = [...prev.existingImages];
+      [nextExisting[index], nextExisting[nextIndex]] = [nextExisting[nextIndex], nextExisting[index]];
+      return { ...prev, existingImages: nextExisting };
+    });
+  }
+
+  function moveNewImage(index, direction) {
+    setEditor((prev) => {
+      const nextIndex = index + direction;
+      if (nextIndex < 0 || nextIndex >= prev.newImages.length) return prev;
+      const nextNew = [...prev.newImages];
+      [nextNew[index], nextNew[nextIndex]] = [nextNew[nextIndex], nextNew[index]];
+      return { ...prev, newImages: nextNew };
+    });
+  }
+
+  function appendNewImages(nextFiles) {
+    setEditor((prev) => ({
+      ...prev,
+      newImages: [...(prev.newImages || []), ...nextFiles],
+    }));
+  }
+
   async function saveProduct() {
     setSaving(true);
     setError('');
@@ -205,16 +232,28 @@ export default function AdminInventoryManager() {
           </div>
           <div className="field">
             <label>{imagesText(lang)}</label>
+            <div
+              className="dropZone"
+              onDragOver={(e) => e.preventDefault()}
+              onDrop={(e) => {
+                e.preventDefault();
+                appendNewImages(
+                  Array.from(e.dataTransfer.files || []).filter((file) => file.type.startsWith('image/')),
+                );
+              }}
+            >
+              <strong>{lang === 'es' ? 'Arrastra imagenes nuevas aqui' : 'Drag new images here'}</strong>
+              <div className="note">
+                {lang === 'es'
+                  ? 'Tambien puedes usar el selector y luego reordenar las fotos.'
+                  : 'You can also use the file picker and then reorder the photos.'}
+              </div>
+            </div>
             <input
               type="file"
               accept="image/*"
               multiple
-              onChange={(e) =>
-                setEditor((prev) => ({
-                  ...prev,
-                  newImages: [...(prev.newImages || []), ...Array.from(e.target.files || [])],
-                }))
-              }
+              onChange={(e) => appendNewImages(Array.from(e.target.files || []))}
             />
             <div className="imageToolbar">
               <button
@@ -238,6 +277,20 @@ export default function AdminInventoryManager() {
                     <img src={image} alt={`${existingImageText(lang)} ${index + 1}`} />
                     <div className="cap">{`${existingImageText(lang)} ${index + 1}`}</div>
                     <div className="previewActions">
+                      <button
+                        className="btn-secondary previewActionBtn"
+                        type="button"
+                        onClick={() => moveExistingImage(index, -1)}
+                      >
+                        {moveUpText(lang)}
+                      </button>
+                      <button
+                        className="btn-secondary previewActionBtn"
+                        type="button"
+                        onClick={() => moveExistingImage(index, 1)}
+                      >
+                        {moveDownText(lang)}
+                      </button>
                       <button
                         className={`btn-secondary previewActionBtn ${editor.primarySource === `existing:${image}` ? 'isActive' : ''}`}
                         type="button"
@@ -276,6 +329,20 @@ export default function AdminInventoryManager() {
                     <img src={URL.createObjectURL(image)} alt={image.name} />
                     <div className="cap">{image.name}</div>
                     <div className="previewActions">
+                      <button
+                        className="btn-secondary previewActionBtn"
+                        type="button"
+                        onClick={() => moveNewImage(index, -1)}
+                      >
+                        {moveUpText(lang)}
+                      </button>
+                      <button
+                        className="btn-secondary previewActionBtn"
+                        type="button"
+                        onClick={() => moveNewImage(index, 1)}
+                      >
+                        {moveDownText(lang)}
+                      </button>
                       <button
                         className={`btn-secondary previewActionBtn ${editor.primarySource === `new:${index}` ? 'isActive' : ''}`}
                         type="button"
@@ -526,6 +593,14 @@ function primaryImageText(lang) {
 
 function removeImageText(lang) {
   return lang === 'es' ? 'Quitar' : 'Remove';
+}
+
+function moveUpText(lang) {
+  return lang === 'es' ? 'Subir' : 'Move up';
+}
+
+function moveDownText(lang) {
+  return lang === 'es' ? 'Bajar' : 'Move down';
 }
 
 function visibilityText(lang) {

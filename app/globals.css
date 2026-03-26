@@ -215,6 +215,14 @@ button,
   gap: 8px;
   flex-wrap: wrap;
 }
+.dropZone {
+  border: 1px dashed rgba(255, 255, 255, 0.2);
+  background: rgba(255, 255, 255, 0.02);
+  border-radius: 16px;
+  padding: 16px;
+  margin-bottom: 12px;
+  text-align: center;
+}
 .filterPill,
 .previewActionBtn {
   padding: 9px 12px;

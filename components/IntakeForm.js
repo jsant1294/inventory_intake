@@ -35,7 +35,30 @@ export default function IntakeForm() {
     [form.purchase_cost, form.target_sale_price],
   );
   const update = (key, value) => setForm((prev) => ({ ...prev, [key]: value }));
-  const onFilesChange = (e) => setImages(Array.from(e.target.files || []));
+  const onFilesChange = (e) => appendImages(Array.from(e.target.files || []));
+
+  function appendImages(nextFiles) {
+    setImages((prev) => [...prev, ...nextFiles]);
+  }
+
+  function moveImage(index, direction) {
+    setImages((prev) => {
+      const nextIndex = index + direction;
+      if (nextIndex < 0 || nextIndex >= prev.length) return prev;
+      const next = [...prev];
+      [next[index], next[nextIndex]] = [next[nextIndex], next[index]];
+      return next;
+    });
+  }
+
+  function removeImage(index) {
+    setImages((prev) => prev.filter((_, imageIndex) => imageIndex !== index));
+  }
+
+  function onDropImages(e) {
+    e.preventDefault();
+    appendImages(Array.from(e.dataTransfer.files || []).filter((file) => file.type.startsWith('image/')));
+  }
 
   async function handleSubmit(e) {
     e.preventDefault();
@@ -200,6 +223,18 @@ export default function IntakeForm() {
         </div>
         <div className="field">
           <label>{t(lang, 'photos')}</label>
+          <div
+            className="dropZone"
+            onDragOver={(e) => e.preventDefault()}
+            onDrop={onDropImages}
+          >
+            <strong>{lang === 'es' ? 'Arrastra imagenes aqui' : 'Drag images here'}</strong>
+            <div className="note">
+              {lang === 'es'
+                ? 'O usa el selector para cargar varios JPG o PNG.'
+                : 'Or use the file picker to upload multiple JPG or PNG files.'}
+            </div>
+          </div>
           <input
             id="images"
             type="file"
@@ -215,6 +250,17 @@ export default function IntakeForm() {
               <div className="previewCard" key={i}>
                 <img src={p.url} alt={p.name} />
                 <div className="cap">{p.name}</div>
+                <div className="previewActions">
+                  <button className="btn-secondary previewActionBtn" type="button" onClick={() => moveImage(i, -1)}>
+                    {lang === 'es' ? 'Subir' : 'Move up'}
+                  </button>
+                  <button className="btn-secondary previewActionBtn" type="button" onClick={() => moveImage(i, 1)}>
+                    {lang === 'es' ? 'Bajar' : 'Move down'}
+                  </button>
+                  <button className="btn-secondary previewActionBtn" type="button" onClick={() => removeImage(i)}>
+                    {lang === 'es' ? 'Quitar' : 'Remove'}
+                  </button>
+                </div>
               </div>
             ))}
           </div>

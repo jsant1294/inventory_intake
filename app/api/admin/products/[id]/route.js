@@ -18,6 +18,25 @@ function parseJsonArray(value) {
   }
 }
 
+function extractStoragePath(publicUrl, bucketName) {
+  const marker = `/storage/v1/object/public/${bucketName}/`;
+  const idx = String(publicUrl || '').indexOf(marker);
+  if (idx === -1) return null;
+  return publicUrl.slice(idx + marker.length);
+}
+
+async function deleteRemovedImages(supabase, bucketName, previousImages, nextImages) {
+  const removedPaths = (previousImages || [])
+    .filter((image) => image && !(nextImages || []).includes(image))
+    .map((image) => extractStoragePath(image, bucketName))
+    .filter(Boolean);
+
+  if (!removedPaths.length) return;
+
+  const { error } = await supabase.storage.from(bucketName).remove(removedPaths);
+  if (error) throw error;
+}
+
 async function uploadImages(supabase, bucketName, slug, files) {
   const imageUrls = [];
   const publicBaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
@@ -111,6 +130,8 @@ export async function PUT(request, { params }) {
       image_url: mergedImages[0] || null,
       updated_at: new Date().toISOString(),
     };
+
+    await deleteRemovedImages(supabase, bucketName, existingProduct.images || [], mergedImages);
 
     const { data, error } = await supabase
       .from('products')
