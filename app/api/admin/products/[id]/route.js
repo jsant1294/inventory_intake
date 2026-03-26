@@ -75,7 +75,11 @@ export async function PUT(request, { params }) {
 
     const existingImages = parseJsonArray(formData.get('existing_images')?.toString());
     const primarySource = formData.get('primary_source')?.toString() || '';
-    const imageMode = formData.get('image_mode')?.toString() || 'append';
+    const hadExistingImages = Array.isArray(existingProduct.images)
+      ? existingProduct.images.filter(Boolean).length > 0
+      : Boolean(existingProduct.image_url);
+    const imageMode = formData.get('image_mode')?.toString()
+      || (!hadExistingImages && uploadedImageUrls.length > 0 ? 'replace' : 'append');
 
     let mergedImages =
       imageMode === 'replace'
