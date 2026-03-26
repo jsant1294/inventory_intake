@@ -2,6 +2,7 @@
 import React, { useMemo, useState } from 'react';
 import { BRAND } from '../config/brand';
 import { BRANDS, CATEGORIES, PLATFORMS, CONDITIONS, LOCATIONS } from '../lib/options';
+import { supabase } from '../lib/supabase';
 import { useLang } from './LangProvider';
 import { formatText, t } from '../lib/translations';
 
@@ -41,10 +42,21 @@ export default function IntakeForm() {
     setLoading(true);
     setStatus(null);
     try {
+      const { data: sessionData, error: sessionError } = await supabase.auth.getSession();
+      if (sessionError) throw sessionError;
+      const accessToken = sessionData.session?.access_token;
+      if (!accessToken) throw new Error('Please log in as an admin before adding inventory.');
+
       const fd = new FormData();
       Object.entries(form).forEach(([k, v]) => fd.append(k, String(v)));
       images.forEach((img) => fd.append('images', img));
-      const res = await fetch('/api/intake', { method: 'POST', body: fd });
+      const res = await fetch('/api/intake', {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+        },
+        body: fd,
+      });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || t(lang, 'genericError'));
       setStatus({

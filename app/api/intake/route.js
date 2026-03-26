@@ -7,6 +7,30 @@ function badRequest(message, status = 400) {
   return Response.json({ error: message }, { status });
 }
 
+async function requireAdminUser(request, supabaseUrl, apiKey) {
+  const authorization = request.headers.get('authorization') || '';
+  const token = authorization.startsWith('Bearer ') ? authorization.slice(7).trim() : '';
+
+  if (!token) {
+    return { error: badRequest('You must be logged in to add inventory.', 401) };
+  }
+
+  const authClient = createClient(supabaseUrl, apiKey, {
+    auth: { persistSession: false },
+  });
+  const { data, error } = await authClient.auth.getUser(token);
+
+  if (error || !data.user) {
+    return { error: badRequest('Your session is invalid. Please log in again.', 401) };
+  }
+
+  if (data.user.user_metadata?.role !== 'admin') {
+    return { error: badRequest('Only admins can add inventory.', 403) };
+  }
+
+  return { user: data.user };
+}
+
 function slugify(input) {
   return String(input || '')
     .normalize('NFD')
@@ -66,12 +90,17 @@ async function ensureBatteryPlatform(supabase, name, brandId = null) {
 
 export async function POST(request) {
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const supabaseAnonKey =
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || process.env.SUPABASE_ANON_KEY;
   const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
   const bucketName = process.env.NEXT_PUBLIC_SUPABASE_STORAGE_BUCKET || 'product-images';
 
-  if (!supabaseUrl || !serviceRoleKey) {
+  if (!supabaseUrl || !supabaseAnonKey || !serviceRoleKey) {
     return badRequest('Missing Supabase environment variables.');
   }
+
+  const authResult = await requireAdminUser(request, supabaseUrl, supabaseAnonKey);
+  if (authResult.error) return authResult.error;
 
   const supabase = createClient(supabaseUrl, serviceRoleKey, {
     auth: { persistSession: false },
