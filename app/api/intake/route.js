@@ -134,7 +134,7 @@ export async function POST(request) {
       slug,
       brand: brandName,
       category: categoryName,
-      model: modelNumber || null,
+      model: modelNumber || '',
       description: notes || null,
       price: targetSalePrice,
       stock: quantityOnHand,
