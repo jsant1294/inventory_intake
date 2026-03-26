@@ -1,6 +1,6 @@
-import { createClient } from '@supabase/supabase-js';
 import { BRAND } from '../../../config/brand';
 import { requireAdminUser } from '../../../lib/adminAuth';
+import { getServerSupabase } from '../../../lib/supabase';
 
 export const runtime = 'nodejs';
 
@@ -17,72 +17,77 @@ function slugify(input) {
     .replace(/(^-|-$)/g, '');
 }
 
-async function ensureBrand(supabase, name) {
-  if (!name) return null;
-
-  const { data, error } = await supabase
-    .from('brands')
-    .upsert({ name, slug: slugify(name) }, { onConflict: 'name' })
-    .select('id')
-    .single();
-
-  if (error) throw error;
-  return data.id;
+function parseCurrency(value) {
+  const amount = Number(value || 0);
+  if (!Number.isFinite(amount) || amount < 0) return 0;
+  return Number(amount.toFixed(2));
 }
 
-async function ensureCategory(supabase, name) {
-  if (!name) return null;
-
-  const { data, error } = await supabase
-    .from('tool_categories')
-    .upsert({ name }, { onConflict: 'name' })
-    .select('id')
-    .single();
-
-  if (error) throw error;
-  return data.id;
+function parseWholeNumber(value, fallback = 0) {
+  const amount = Number(value);
+  if (!Number.isFinite(amount)) return fallback;
+  return Math.max(0, Math.round(amount));
 }
 
-async function ensureBatteryPlatform(supabase, name, brandId = null) {
-  if (!name || name === 'N/A') return null;
-
-  const { data: existing, error: existingError } = await supabase
-    .from('battery_platforms')
-    .select('id')
-    .eq('name', name)
-    .maybeSingle();
-
-  if (existingError) throw existingError;
-  if (existing?.id) return existing.id;
-
+async function buildUniqueSlug(supabase, productName, modelNumber) {
+  const baseSlug = slugify(`${productName}-${modelNumber || ''}`) || `tool-${Date.now()}`;
   const { data, error } = await supabase
-    .from('battery_platforms')
-    .insert({ name, brand_id: brandId })
-    .select('id')
-    .single();
+    .from('products')
+    .select('slug')
+    .ilike('slug', `${baseSlug}%`);
 
   if (error) throw error;
-  return data.id;
+
+  const existing = new Set((data || []).map((row) => row.slug).filter(Boolean));
+  if (!existing.has(baseSlug)) return baseSlug;
+
+  let index = 2;
+  while (existing.has(`${baseSlug}-${index}`)) {
+    index += 1;
+  }
+
+  return `${baseSlug}-${index}`;
+}
+
+async function uploadImages(supabase, bucketName, slug, files) {
+  const imageUrls = [];
+
+  for (let i = 0; i < files.length; i += 1) {
+    const file = files[i];
+
+    if (!(file instanceof File) || file.size === 0) continue;
+
+    const ext = file.name.includes('.') ? file.name.split('.').pop() : 'jpg';
+    const path = `brands/${slugify(BRAND.name)}/${slug}/${Date.now()}-${i}.${ext}`;
+
+    const { error: uploadError } = await supabase.storage
+      .from(bucketName)
+      .upload(path, await file.arrayBuffer(), {
+        contentType: file.type || 'application/octet-stream',
+        upsert: true,
+      });
+
+    if (uploadError) throw uploadError;
+
+    const { data: publicUrlData } = supabase.storage.from(bucketName).getPublicUrl(path);
+    imageUrls.push(publicUrlData.publicUrl);
+  }
+
+  return imageUrls;
 }
 
 export async function POST(request) {
-  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const supabaseAnonKey =
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || process.env.SUPABASE_ANON_KEY;
   const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
   const bucketName = process.env.NEXT_PUBLIC_SUPABASE_STORAGE_BUCKET || 'product-images';
 
-  if (!supabaseUrl || !supabaseAnonKey || !serviceRoleKey) {
+  if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !serviceRoleKey) {
     return badRequest('Missing Supabase environment variables.');
   }
 
   const authResult = await requireAdminUser(request);
   if (authResult.error) return authResult.error;
 
-  const supabase = createClient(supabaseUrl, serviceRoleKey, {
-    auth: { persistSession: false },
-  });
-
+  const supabase = getServerSupabase();
   const formData = await request.formData();
 
   const productName = formData.get('product_name')?.toString().trim();
@@ -94,9 +99,9 @@ export async function POST(request) {
   const location = formData.get('location')?.toString().trim();
   const notes = formData.get('notes')?.toString().trim();
 
-  const quantityOnHand = Number(formData.get('quantity_on_hand') || 1);
-  const purchaseCost = Number(formData.get('purchase_cost') || 0);
-  const targetSalePrice = Number(formData.get('target_sale_price') || 0);
+  const quantityOnHand = parseWholeNumber(formData.get('quantity_on_hand') || 1, 1);
+  const purchaseCost = parseCurrency(formData.get('purchase_cost'));
+  const targetSalePrice = parseCurrency(formData.get('target_sale_price'));
 
   const includesBattery = formData.get('includes_battery') === 'true';
   const includesCharger = formData.get('includes_charger') === 'true';
@@ -105,101 +110,56 @@ export async function POST(request) {
   if (!productName) return badRequest('Product name is required.');
   if (!brandName) return badRequest('Brand is required.');
   if (!categoryName) return badRequest('Category is required.');
+  if (quantityOnHand < 1) return badRequest('Quantity must be at least 1.');
 
   try {
-    const brandId = await ensureBrand(supabase, brandName);
-    const categoryId = await ensureCategory(supabase, categoryName);
-    const batteryPlatformId = await ensureBatteryPlatform(supabase, batteryPlatform, brandId);
+    const slug = await buildUniqueSlug(supabase, productName, modelNumber);
+    const files = formData.getAll('images').filter(Boolean);
+    const imageUrls = await uploadImages(supabase, bucketName, slug, files);
 
-    const sku = `JRT-${slugify(BRAND.name).slice(0, 3).toUpperCase()}-${slugify(brandName)
-      .slice(0, 3)
-      .toUpperCase()}-${(modelNumber || Date.now().toString()).replace(
-      /\s+/g,
-      '',
-    )}-${Date.now().toString().slice(-4)}`;
+    const metadata = {
+      intake_source: 'admin_portal',
+      condition: condition || null,
+      location: location || null,
+      battery_platform: batteryPlatform || null,
+      purchase_cost: purchaseCost,
+      notes: notes || null,
+      includes_battery: includesBattery,
+      includes_charger: includesCharger,
+      includes_case: includesCase,
+    };
+
+    const insertPayload = {
+      name: productName,
+      slug,
+      brand: brandName,
+      category: categoryName,
+      model: modelNumber || null,
+      description: notes || null,
+      price: targetSalePrice,
+      stock: quantityOnHand,
+      active: true,
+      image_url: imageUrls[0] || null,
+      images: imageUrls,
+      voltage:
+        batteryPlatform && batteryPlatform !== 'N/A' && batteryPlatform !== 'Corded'
+          ? batteryPlatform
+          : null,
+      metadata,
+      updated_at: new Date().toISOString(),
+    };
 
     const { data: product, error: productError } = await supabase
       .from('products')
-      .insert({
-        internal_sku: sku,
-        product_name: productName,
-        brand_id: brandId,
-        category_id: categoryId,
-        battery_platform_id: batteryPlatformId,
-        model_number: modelNumber || null,
-        condition: condition || null,
-        tool_type: batteryPlatform === 'Corded' ? 'Corded' : 'Cordless',
-        working_status: 'Fully Working',
-        includes_battery: includesBattery,
-        includes_charger: includesCharger,
-        includes_case: includesCase,
-        description: notes || null,
-        condition_notes: notes || null,
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString(),
-      })
-      .select('id, internal_sku')
+      .insert(insertPayload)
+      .select('id, slug')
       .single();
 
     if (productError) throw productError;
 
-    const { error: lotError } = await supabase.from('inventory_lots').insert({
-      product_id: product.id,
-      purchase_date: new Date().toISOString().slice(0, 10),
-      quantity_on_hand: quantityOnHand,
-      reserved_quantity: 0,
-      stock_threshold: 1,
-      purchase_cost: purchaseCost,
-      repair_cost: 0,
-      prep_cost: 0,
-      target_sale_price: targetSalePrice,
-      minimum_accept_price: targetSalePrice ? Math.max(0, targetSalePrice - 20) : 0,
-      location: location || null,
-      stock_status: quantityOnHand > 0 ? 'In Stock' : 'Out of Stock',
-      listing_status: 'Listed',
-      created_at: new Date().toISOString(),
-      updated_at: new Date().toISOString(),
-    });
-
-    if (lotError) throw lotError;
-
-    const files = formData.getAll('images').filter(Boolean);
-    const imageUrls = [];
-
-    for (let i = 0; i < files.length; i += 1) {
-      const file = files[i];
-
-      if (!(file instanceof File) || file.size === 0) continue;
-
-      const ext = file.name.includes('.') ? file.name.split('.').pop() : 'jpg';
-      const path = `brands/${slugify(BRAND.name)}/${product.internal_sku}/${Date.now()}-${i}.${ext}`;
-
-      const { error: uploadError } = await supabase.storage
-        .from(bucketName)
-        .upload(path, await file.arrayBuffer(), {
-          contentType: file.type || 'application/octet-stream',
-          upsert: true,
-        });
-
-      if (uploadError) throw uploadError;
-
-      const { data: publicUrlData } = supabase.storage.from(bucketName).getPublicUrl(path);
-
-      imageUrls.push(publicUrlData.publicUrl);
-
-      const { error: imageError } = await supabase.from('product_images').insert({
-        product_id: product.id,
-        image_url: publicUrlData.publicUrl,
-        is_primary: i === 0,
-        sort_order: i,
-      });
-
-      if (imageError) throw imageError;
-    }
-
     return Response.json({
       ok: true,
-      sku: product.internal_sku,
+      sku: product.slug,
       image_urls: imageUrls,
     });
   } catch (error) {
