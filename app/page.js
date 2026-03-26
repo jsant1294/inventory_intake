@@ -4,6 +4,7 @@ import NavBar from '../components/NavBar';
 import Hero from '../components/Hero';
 import FeatureBlocks from '../components/FeatureBlocks';
 import InventoryMock from '../components/InventoryMock';
+import SupabaseTest from '../components/SupabaseTest';
 import { BRAND } from '../config/brand';
 import { useLang } from '../components/LangProvider';
 import { t } from '../lib/translations';
@@ -37,6 +38,7 @@ export default function HomePage() {
           </div>
         </section>
         <InventoryMock />
+        <SupabaseTest />
         <div className="footerNote">
           {BRAND.name} • {BRAND.domain} • {t(lang, 'homeFooter')}
         </div>
