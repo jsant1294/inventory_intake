@@ -55,7 +55,7 @@ async function uploadImages(supabase, bucketName, slug, files) {
   for (let i = 0; i < files.length; i += 1) {
     const file = files[i];
 
-    if (!(file instanceof File) || file.size === 0) continue;
+    if (!file || typeof file.arrayBuffer !== 'function' || Number(file.size || 0) === 0) continue;
 
     const ext = file.name.includes('.') ? file.name.split('.').pop() : 'jpg';
     const path = `brands/${slugify(BRAND.name)}/${slug}/${Date.now()}-${i}.${ext}`;

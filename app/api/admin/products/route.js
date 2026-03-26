@@ -10,7 +10,12 @@ export async function GET(request) {
 
   try {
     const supabase = getServerSupabase();
-    const { data, error } = await supabase.from('products').select('*').limit(200);
+    const { data, error } = await supabase
+      .from('products')
+      .select('*')
+      .order('updated_at', { ascending: false })
+      .order('created_at', { ascending: false })
+      .limit(200);
     if (error) throw error;
 
     const products = (data || []).map((row) => ({
