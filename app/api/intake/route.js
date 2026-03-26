@@ -1,34 +1,11 @@
 import { createClient } from '@supabase/supabase-js';
 import { BRAND } from '../../../config/brand';
+import { requireAdminUser } from '../../../lib/adminAuth';
 
 export const runtime = 'nodejs';
 
 function badRequest(message, status = 400) {
   return Response.json({ error: message }, { status });
-}
-
-async function requireAdminUser(request, supabaseUrl, apiKey) {
-  const authorization = request.headers.get('authorization') || '';
-  const token = authorization.startsWith('Bearer ') ? authorization.slice(7).trim() : '';
-
-  if (!token) {
-    return { error: badRequest('You must be logged in to add inventory.', 401) };
-  }
-
-  const authClient = createClient(supabaseUrl, apiKey, {
-    auth: { persistSession: false },
-  });
-  const { data, error } = await authClient.auth.getUser(token);
-
-  if (error || !data.user) {
-    return { error: badRequest('Your session is invalid. Please log in again.', 401) };
-  }
-
-  if (data.user.user_metadata?.role !== 'admin') {
-    return { error: badRequest('Only admins can add inventory.', 403) };
-  }
-
-  return { user: data.user };
 }
 
 function slugify(input) {
@@ -99,7 +76,7 @@ export async function POST(request) {
     return badRequest('Missing Supabase environment variables.');
   }
 
-  const authResult = await requireAdminUser(request, supabaseUrl, supabaseAnonKey);
+  const authResult = await requireAdminUser(request);
   if (authResult.error) return authResult.error;
 
   const supabase = createClient(supabaseUrl, serviceRoleKey, {
