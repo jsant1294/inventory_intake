@@ -1,5 +1,6 @@
 'use client';
 
+import React from 'react';
 import Link from 'next/link';
 import { useLang } from './LangProvider';
 import { t } from '../lib/translations';
